@@ -198,29 +198,25 @@ class NaverBlogBot:
                 except TimeoutException:
                     self.log_callback(f"  └ '{post_title}'은(는) 이미 공감했거나 버튼을 찾을 수 없어 건너뜁니다.", "WARN")
                 except NoSuchElementException:
-                    self.log_callback(f"└ '{post_title}'은(는) 비표준 포스트(광고 등)로 추정되어 건너뛰고 삭제합니다.", "WARN")
-                    try:
-                        delete_button = post.find_element(By.CSS_SELECTOR, "i.icon_delete")
-                        self.driver.execute_script("arguments[0].click();", delete_button)
-                        time.sleep(1.5)
-                    except NoSuchElementException:
-                        self.driver.refresh()
-                        time.sleep(2)
-                    continue
+                    self.log_callback(f"└ '{post_title}'은(는) 비표준 포스트로 추정됩니다. 작업을 종료합니다.", "INFO")
+                    # 비표준 포스트를 만나면 모든 '공감' 작업을 종료
+                    return
                 except Exception as e:
                     self.log_callback(f"  └ '{post_title}' 처리 중 예외 발생: {repr(e)}", "ERROR")
                 finally:
-                    self.driver.switch_to.default_content()
-                    self.driver.get(target_url)
-                    WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.list_post_article")))
-                    
-                    try:
-                        first_post = self.driver.find_element(By.CSS_SELECTOR, "div.list_post_article")
-                        delete_button = first_post.find_element(By.CSS_SELECTOR, "i.icon_delete")
-                        self.driver.execute_script("arguments[0].click();", delete_button)
-                        self.log_callback("  └ 목록에서 완료된 글을 삭제했습니다.")
-                        time.sleep(1.5)
-                    except Exception: pass
+                    # 정상 처리된 경우에만 목록으로 돌아가 삭제
+                    if self.driver.current_url != target_url:
+                        self.driver.switch_to.default_content()
+                        self.driver.get(target_url)
+                        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.list_post_article")))
+                        
+                        try:
+                            first_post = self.driver.find_element(By.CSS_SELECTOR, "div.list_post_article")
+                            delete_button = first_post.find_element(By.CSS_SELECTOR, "i.icon_delete")
+                            self.driver.execute_script("arguments[0].click();", delete_button)
+                            self.log_callback("  └ 목록에서 완료된 글을 삭제했습니다.")
+                            time.sleep(1.5)
+                        except Exception: pass
 
             if self.stop_event.is_set(): break
             current_page += 1
